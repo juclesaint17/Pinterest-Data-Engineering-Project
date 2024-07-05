@@ -40,26 +40,34 @@ class AWSDBConnector:
                 data_selected_row = connection.execute(data_string)
                     
                 for row in data_selected_row:
+
                     data_name = dict(row._mapping)
-                    data_to_send = self.post_to_kafka_topics(url,headers,data_name)
-                print(data_name)
-                #return data_to_send
+                    json_data = json.dumps({
+                        "records":[
+                        {
+                            "value":data_name
+                        }
+                        ]
+                    },default=str
+                    )
+                    data_to_send = self.post_to_kafka_topics(url,headers,json_data)
+
     
-    def post_to_kafka_topics(self,invoke_url:str, headers,data:str):
+    def post_to_kafka_topics(self,invoke_url:str,headers,data:str):
             
-            response = requests.request("POST",url=invoke_url,headers=headers,data=data)
+            response = requests.request("POST",invoke_url,headers=headers,data=data)
             if response.status_code == 200:
                 print("Data succesfully sent")
             else:
                 print(f"Response failed with status code: {response.status_code}")
-                print(f"Response Text:{response.text}")
+                print(f"Response Text:{response.json()}")
             return response   
 
 
 
 if __name__ == "__main__":
    
-   headers = {'Content-Type': 'application/vnd.kafka.json.v2+json'}
+   headers = {"Content-Type": "application/vnd.kafka.json.v2+json"}
 
    pin_url = "https://wzyu1l1xjc.execute-api.us-east-1.amazonaws.com/second_stage/topics/0e7ae8feb921.pin"
    geo_url = "https://wzyu1l1xjc.execute-api.us-east-1.amazonaws.com/second_stage/topics/0e7ae8feb921.geo"
