@@ -21,10 +21,6 @@ class AWSDBConnector:
 
     def __init__(self):
 
-        #self.HOST = "pinterestdbreadonly.cq2e8zno855e.eu-west-1.rds.amazonaws.com"
-        #self.USER = 'project_user'
-        #self.PASSWORD = ':t%;yCY3Yjg'
-        #self.DATABASE = 'pinterest_data'
         self.authentication = ''
 
     def read_database_credentials(self,credentials_file)-> dict:
@@ -41,6 +37,7 @@ class AWSDBConnector:
         '''
         try:
             print("\tLOADING CREDENTIALS...")
+            
             #opening file containing credentials
             with open(credentials_file, 'r') as user_access:
                 authentication = yaml.safe_load(user_access)
