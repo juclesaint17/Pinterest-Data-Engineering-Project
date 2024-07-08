@@ -37,7 +37,7 @@ class AWSDBConnector:
         '''
         try:
             print("\tLOADING CREDENTIALS...")
-            
+
             #opening file containing credentials
             with open(credentials_file, 'r') as user_access:
                 authentication = yaml.safe_load(user_access)
@@ -142,6 +142,20 @@ class AWSDBConnector:
 
     
     def post_to_kafka_topics(self,invoke_url:str,headers,data:str):
+            
+            '''
+             This function post data received from the kafka topics to the AWS s3 buckets.
+
+             Parameters:
+             -------------
+             invoke_url: API url after deployement
+
+             headers: API headers
+             data: data to send to the destination
+
+             Return:
+             Return the response of the request
+            '''
             
             response = requests.request("POST",invoke_url,headers=headers,data=data)
             if response.status_code == 200:
