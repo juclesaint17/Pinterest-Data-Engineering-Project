@@ -4,6 +4,7 @@
 2. [Installation](#instruction)
 3. [Structure](#structure)
     - [3.a Configuration](3.a-configuration)
+    - [3.b Spark Data Cleaning and computation](3.b-spark-data-cleaning-and-computation)
    
 
 ### Description:
@@ -42,7 +43,7 @@ The structure of the project file is defined as follow:
       ![image](https://github.com/juclesaint17/Pinterest-Data-Engineering-Project/assets/94936087/beda5994-0a35-45cb-9121-7d07149b2b2b)
 
     '''
-### 3.b User posting emulation :
+#### User posting emulation :
 
    To send data to the API we build a python script user_posting_emulation.py file. The script will send data to the kafka topics using the API invoke URL 
    we obtained after deploying the API as shows below:
@@ -244,7 +245,7 @@ The user_posting_emulation contain a python class with functions as describe bel
  - post_kafka_topics:
    This function use the requests module to send data from the API to the s3 bucket.
 
-### 3.c Read  data from AWS to Databricks:
+#### Read  data from AWS to Databricks:
 
 After data are collected and saved to AWS bucket and in order to clean and query the batch data,the data is mount from the AWS s3 bucket storing the data to Databricks.
 First we create an access key and secret key to grant full acccess of the databrick account to the AWS s3 bucket and mount the S3 bucket to a specific location to Databricks as illustrate below.
@@ -351,7 +352,97 @@ The screenshots below shows the created dataframes of the data mounted from s3 b
      '''
     
 
+### 3.b Spark Data Cleaning and computation:
+After loading batch data from the AWS S3 bucket and mounted it to the databricks folder,we use spark to clean data,also perform some computations to analyse the data.
+the screenshots below illustrate how the data was cleaned and compute using Spark.
+- Task1 : Clean the dataframe that contains information about Pinterest post
 
+  '''
+     ![image](https://github.com/user-attachments/assets/606b5870-fa41-45d8-8050-76ec7307e930)
+
+     ![image](https://github.com/user-attachments/assets/481b42e0-cba3-48f6-b270-0544a34344f9)
+
+     ![image](https://github.com/user-attachments/assets/85c87400-38f0-4e62-baf9-316e0fa3c625)
+
+     ![image](https://github.com/user-attachments/assets/d98feaaa-2f70-4326-bb92-2d355e1e4261)
+
+
+     ![image](https://github.com/user-attachments/assets/5589b0c9-8946-4cdf-9bb2-eb30e763064a)
+
+
+
+  '''
+  - Task 2: Clean the dataframe that contains information about Pinterest post
+
+    '''
+      ![image](https://github.com/user-attachments/assets/7e53ba7f-3300-4bc9-860d-fcb93af5d2d1)
+
+    '''
+
+  - Task3 : Clean the dataframe that contains information about Pinterest users
+    
+     '''
+      ![image](https://github.com/user-attachments/assets/4bddef57-9a22-4fdb-beb6-023897f2c2e8)
+
+     '''
+
+  - Task 4: Most popular category in each country:
+
+     '''
+       ![image](https://github.com/user-attachments/assets/0167a40e-06bc-4bd4-a689-2df7acf3bf43)
+ 
+       ![image](https://github.com/user-attachments/assets/0bd43690-5aea-428a-bdbf-c2745fb4de94)
+
+
+     '''
+  - Task 5: Most popular category each year:
+
+     '''
+       ![image](https://github.com/user-attachments/assets/cef27ddc-f26b-40ea-b5ce-3b45fa9a151d)
+
+     '''
+
+  -Task 6: User with most followers in each country:
+  
+    '''
+      ![image](https://github.com/user-attachments/assets/3e132638-dab8-4411-8286-c606e4451573)
+
+    '''
+  -Task 7: Popular category for age group:
+
+   '''
+     ![image](https://github.com/user-attachments/assets/3441cca4-660e-4472-9ef2-d4b06a6cff68)
+
+   '''
+  -Task 8: Median followers count for age group:
+    '''
+      ![image](https://github.com/user-attachments/assets/2de1dd2e-5272-4f4b-a553-489edcac5d4f)
+
+    '''
+  - Task 9: Number of users joining each year:
+    
+    '''
+      ![image](https://github.com/user-attachments/assets/83076f99-55b8-4ac4-a5e1-88b46cc05332)
+
+      ![image](https://github.com/user-attachments/assets/9832d73d-1104-4399-b941-ef4dd06b2cd8)
+
+
+    '''
+
+  -Task 10: Median followers count of users based on joining year:
+
+   '''
+     ![image](https://github.com/user-attachments/assets/71873a21-955d-4442-a195-c9e45f9d4d43)
+
+   '''
+
+  -Task 11: Median followers count of users based on joining year and age group:
+
+    '''
+      ![image](https://github.com/user-attachments/assets/c1702de5-eda3-411b-baf5-669efaf66a04)
+
+    '''
+  
 
 
         
