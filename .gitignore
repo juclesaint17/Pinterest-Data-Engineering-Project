@@ -7,3 +7,4 @@ zookeeper_string
 boostrap_server
 bucket_name
 invoke_url
+.venv
