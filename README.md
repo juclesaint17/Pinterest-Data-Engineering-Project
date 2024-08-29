@@ -5,6 +5,7 @@
 3. [Structure](#structure)
     - [3.a Configuration](3.a-configuration)
     - [3.b Spark Data Cleaning and computation](3.b-spark-data-cleaning-and-computation)
+    - [3.c_Orchestrating_Databricks_Workloads_on Aws_Mwaa](3.c-orchestrating-databricks-workloads-on-aws-mwaa)
    
 
 ### Description:
@@ -443,6 +444,24 @@ the screenshots below illustrate how the data was cleaned and compute using Spar
 
     '''
   
+### 3.c Orchestrating Databricks Workloads on Aws Mwaa:
+After performing data computations we create localy an Airflow Dag file to triggle the Databricks notebook to run on daily.
+The dag wil be save on Aws bucket as illustrated below.
+
+ '''
+    ![image](https://github.com/user-attachments/assets/54ccc7b0-1064-439d-8179-be026669e240)
+
+ '''
+  
+The screenshot below shows how the Airflow dag trigggle the Databricks notebook and runs the dag daily.
+
+
+ '''
+   ![image](https://github.com/user-attachments/assets/37c2654c-e04f-42de-bb7a-ea03e5c2d25d)
+
+ '''
+
+
 
 
         
