@@ -195,7 +195,7 @@ if __name__ == "__main__":
 
    data_pin_process.join()
    data_geo_process.join()
-   data_user_process.join
+   data_user_process.join()
 
 
 

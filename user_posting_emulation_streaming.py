@@ -64,8 +64,8 @@ class AWSDBConnector:
         Return a new database connection
 
         '''
-        print("CREATING A NEW DATABASE CONNECTION...")
-        print("READING USER CREDENTIALS")
+        #print("CREATING A NEW DATABASE CONNECTION...")
+        #print("READING USER CREDENTIALS")
 
         user_db_credentials = self.read_database_credentials(db_credentials)
 
@@ -93,7 +93,7 @@ class AWSDBConnector:
                 
                 print("DATABASE ENGINE SUCCESSEFULLY INITIATED")
             
-                print(f"\tUSER: {USER} CONNECTED TO THE DATABASE SERVER")
+                #print(f"\tUSER: {USER} CONNECTED TO THE DATABASE SERVER")
             return engine
         except Exception as error:
             print("DATABASE ENGINE INITIATION FAILED",error)
@@ -140,18 +140,14 @@ class AWSDBConnector:
 
                         "StreamName":data_stream_name,
 
-                        "records":[
-                        {
-                            "value":data_name
-                        }
-                        ],
+                        "Data":data_name,
+                        
                         "PartitionKey":partition_key
-                    },default=str
+                    },
+                    default=str
                     )
-                    print(json_data)
-                
                     data_to_send = self.put_to_kinesis_stream(url,headers,json_data)
-                    #print(data_to_send)
+                    #return data_to_send
 
     
     def put_to_kinesis_stream(self,invoke_url:str,headers,data:str):        
@@ -169,6 +165,7 @@ class AWSDBConnector:
             response = requests.request("PUT",invoke_url,headers=headers,data=data)
             if response.status_code == 200:
                 print("Data succesfully sent")
+                print(f"Response Text:{response.json()}")
             else:
                 print(f"Response failed with status code: {response.status_code}")
                 print(f"Response Text:{response.json()}")
