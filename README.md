@@ -1,11 +1,13 @@
 # Pinterest-Data-Engineering-Project
 ## Table of Contents
 1. [Description](#description)
-2. [Installation](#instruction)
+2. [Installation](#installation)
 3. [Structure](#structure)
     - [3.a Configuration](3.a-configuration)
     - [3.b Spark Data Cleaning and computation](3.b-spark-data-cleaning-and-computation)
     - [3.c_Orchestrating_Databricks_Workloads_on Aws_Mwaa](3.c-orchestrating-databricks-workloads-on-aws-mwaa)
+    - [3.d_Sending_Streaming_Data_to_Kinesis](3.d-sending-streaming-data-to-kinesis)
+    - [3.e_Read_Data_From_Kinesis_to_Databricks](3.e-read-data-from-kinesis-to-databricks)
    
 
 ### Description:
@@ -445,6 +447,7 @@ the screenshots below illustrate how the data was cleaned and compute using Spar
     '''
   
 ### 3.c Orchestrating Databricks Workloads on Aws Mwaa:
+
 After performing data computations we create localy an Airflow Dag file to triggle the Databricks notebook to run on daily.
 The dag wil be save on Aws bucket as illustrated below.
 
@@ -460,6 +463,438 @@ The screenshot below shows how the Airflow dag trigggle the Databricks notebook 
    ![image](https://github.com/user-attachments/assets/37c2654c-e04f-42de-bb7a-ea03e5c2d25d)
 
  '''
+
+### 3.d Sending Streaming Data to Kinesis:
+
+Using AWS Kinesis, we created three data streams to received the streaming data and configure the REST API to invoke actions to the three Kinesis data streams created.
+The API created will invoke the following actions:   
+ -List streams in Kinesis
+ -Create, describe and delete streams in Kinesis
+ -Add records to streams in Kinesis
+After setting up the API to communicate with Kinesis data streams created, we create a python script User_posting_emulation_streaming.py to send requests to the API, which adds one record at a time from the three Pinterest tables to the streams created in KInesis as illustrate below:
+
+    '''
+   
+              import requests
+        import random
+        import boto3
+        import json
+        import yaml
+        import time
+        import sqlalchemy
+        from time import sleep
+        from sqlalchemy import text
+        from datetime import time
+        from multiprocessing import Process
+        import uuid
+        
+        
+        
+        
+        
+        random.seed(100)
+        
+        
+        class AWSDBConnector:
+
+    def __init__(self):
+
+        self.authentication = ''
+
+    def read_database_credentials(self,credentials_file)-> dict:
+        '''
+        Read User database credentials stored in a YAML file
+
+        Parameters:
+        credentials_file: YAML file containing the users credentials
+
+        Return:
+        ----------
+        Return a key, value pair of the data securely stored in a file
+
+        '''
+        try:
+            print("\tLOADING CREDENTIALS...")
+
+            #opening file containing credentials
+            with open(credentials_file, 'r') as user_access:
+                authentication = yaml.safe_load(user_access)
+            if True:
+                print("\tCREDENTIALS SUCCESSFULLY LOADED")
+
+            return authentication
+        except Exception as error:
+            print("PLEASE CHECK YOUR CREDENTIALS OR CONTACT ADMIN\n", error)
+
+
+
+
+    def create_db_connector(self,db_credentials:str):
+        '''
+        Create a database connection with user database access codes
+
+        Parameters:
+        ------------
+        db_credentials: User database credentials to access  the database
+
+        Return:
+        Return a new database connection
+
+        '''
+        #print("CREATING A NEW DATABASE CONNECTION...")
+        #print("READING USER CREDENTIALS")
+
+        user_db_credentials = self.read_database_credentials(db_credentials)
+
+        #creating an empty list to store the credentials
+        credentials_list =[]
+
+        #accessing credentials file to collect the credentials values
+        credentials_values = list(user_db_credentials.values())
+
+        # appending credentials value to the created list
+        for data in credentials_values:
+            credentials_list.append(data)
+        
+        HOST = credentials_list[0]
+        USER = credentials_list[1]
+        PASSWORD = credentials_list[2]
+        DATABASE = credentials_list[3]
+        PORT = credentials_list[4]
+        
+        try:
+            print("\tINITIATING DATABASE ENGINE CONNECTION..")
+
+            engine = sqlalchemy.create_engine(f"mysql+pymysql://{USER}:{PASSWORD}@{HOST}:{PORT}/{DATABASE}?charset=utf8mb4")
+            if True:
+                
+                print("DATABASE ENGINE SUCCESSEFULLY INITIATED")
+            
+                #print(f"\tUSER: {USER} CONNECTED TO THE DATABASE SERVER")
+            return engine
+        except Exception as error:
+            print("DATABASE ENGINE INITIATION FAILED",error)
+
+
+    def send_data(
+            self,
+            user_credentials:str,
+            data:str,
+            url:str,
+            data_stream_name:str,
+            headers,
+            partition_key=None
+            ):
+        '''
+        Send data collected from the database tables to kinesis data stream folder,using API Gateway.
+        
+        Parameters:
+        ----------
+        user_credentials: User database credentials
+        data: Data retrieved from the database tables
+        url: API invoke Url to transit data to the AWS kinesis data stream folder
+        data_stream_name: The name of the data stream created in kinesis
+        headers:API headers
+        '''
+        
+        if partition_key == None:
+            partition_key = uuid.uuid4()
+
+        while True:
+            sleep(random.randrange(0, 2))
+            random_row = random.randint(0, 11000)
+            engine = self.create_db_connector(user_credentials)
+            
+            with engine.connect() as connection:
+
+                data_string = text(f"{data} {random_row}, 1")
+                data_selected_row = connection.execute(data_string)
+                    
+                for row in data_selected_row:
+
+                    data_name = dict(row._mapping)
+                    json_data = json.dumps({
+
+                        "StreamName":data_stream_name,
+
+                        "Data":data_name,
+                        
+                        "PartitionKey":partition_key
+                    },
+                    default=str
+                    )
+                    data_to_send = self.put_to_kinesis_stream(url,headers,json_data)
+                    #return data_to_send
+
+    
+    def put_to_kinesis_stream(self,invoke_url:str,headers,data:str):        
+            '''
+             This function post data to kinesis streams.
+             Parameters:
+             -------------
+             invoke_url: API url after deployement
+             headers: API headers
+             data: data to send to the destination
+
+             Return:
+             Return the response of the request
+            '''  
+            response = requests.request("PUT",invoke_url,headers=headers,data=data)
+            if response.status_code == 200:
+                print("Data succesfully sent")
+                print(f"Response Text:{response.json()}")
+            else:
+                print(f"Response failed with status code: {response.status_code}")
+                print(f"Response Text:{response.json()}")
+            return response   
+
+
+        
+        if __name__ == "__main__":
+           
+           new_connector = AWSDBConnector()
+        
+           user_credentials = 'db_creds.yaml'
+           
+           headers = {"Content-Type": "application/json"}
+        
+           stream_pin_url = "https://wzyu1l1xjc.execute-api.us-east-1.amazonaws.com/api_kenesis_stage/streams/streaming-0e7ae8feb921-pin/record"
+           stream_geo_url = "https://wzyu1l1xjc.execute-api.us-east-1.amazonaws.com/api_kenesis_stage/streams/streaming-0e7ae8feb921-geo/record"
+           stream_user_url = "https://wzyu1l1xjc.execute-api.us-east-1.amazonaws.com/api_kenesis_stage/streams/streaming-0e7ae8feb921-user/record"
+        
+           
+        
+           data_streams_pin = "streaming-0e7ae8feb921-pin"
+           data_streams_geo = "streaming-0e7ae8feb921-geo"
+           data_streams_user = "streaming-0e7ae8feb921-user"
+        
+           pin_data = "SELECT * FROM pinterest_data LIMIT"
+           geo_data = "SELECT * FROM geolocation_data LIMIT"
+           user_data = "SELECT * FROM user_data LIMIT"
+           
+        
+           print("STARTING PROCESS...")
+        
+           data_pin_process = Process(target=new_connector.send_data, args=([user_credentials,pin_data,stream_pin_url,data_streams_pin,headers]))
+           data_geo_process = Process(target=new_connector.send_data, args=([user_credentials,geo_data,stream_geo_url,data_streams_geo,headers]))
+           data_user_process = Process(target=new_connector.send_data, args=([user_credentials,user_data,stream_user_url,data_streams_user,headers]))
+        
+           data_pin_process.start()
+           data_geo_process.start()
+           data_user_process.start()
+        
+           data_pin_process.join()
+           data_geo_process.join()
+           data_user_process.join()
+
+    '''
+   
+While the script is running we can observe the data been received to the Kinesis data streams we created:  
+
+  '''
+    ![image](https://github.com/user-attachments/assets/20666162-5d2a-4188-9c97-4ee5512bae6a)
+
+  '''
+
+### 3.e Read Data From Kinesis to Databricks:
+To read the streaming data from the Kinesis data streams created,we create a new notebook in databricks,set the connection between AWS Kinesis to databricks,customized a python script to access kinesis data streams to read and store the incoming data.
+The script created contains defiitions to read the stream data,clean and transform the data and save the cleaned data to the delta-lake tables.
+Bellow are the screenshots of the databricks notebook performing the process describe above:
+
+   '''
+   
+         from pyspark.sql.functions import *
+        from pyspark.sql.types import *
+        import urllib
+        
+        def read_aws_keys(table_path):
+            '''
+            This function loads the credentials file from the delta table.
+             Parameters:
+             table_path: str, the path of the delta table.
+             ---------
+             Return:
+             aws_df_keys: a dataframe containing the credentials
+            '''
+            delta_table_path = table_path
+            aws_df_keys = spark.read.format("delta").load(delta_table_path)
+            return aws_df_keys
+        
+        def extract_keys(tab_path):
+            '''
+            This function returns the access and secret keys stores in the credentials delta table.
+            Return:
+            ACCESS_KEY: str, the access key of the credentials
+            SECRET_KEYS: str, the secret key of the credentials
+
+    '''
+    aws_keys = read_aws_keys(tab_path)
+    ACCESS_KEY = aws_keys.select('Access key ID').collect()[0]['Access key ID']
+    SECRET_KEYS = aws_keys.select('Secret access key').collect()[0]['Secret access key']
+    #encode secret key
+    ENCODED_SECRET_KEY = urllib.parse.quote(string=SECRET_KEYS, safe="")
+    #print(ENCODED_SECRET_KEY)
+    return ACCESS_KEY,SECRET_KEYS
+
+        def read_streaming_data(
+            table_path:str,
+            kinesis_stream_name:list,
+            aws_region,
+            stream_position:str='earliest'
+            ):
+            '''
+            This function reads the data from the kinesis stream.
+            Return:
+            streaming_data_df: a dataframe containing the data from the kinesis stream
+            '''
+            acces_keys, secret_keys = extract_keys(table_path)
+            streaming_data_df = spark.readStream.format('kinesis')\
+                .option('streamName', kinesis_stream_name) \
+                .option('initialPosition', stream_position) \
+                .option('region',aws_region) \
+                .option('awsAccessKey', acces_keys) \
+                .option('awsSecretKey', secret_keys) \
+                .load()  
+            return streaming_data_df
+
+
+   '''
+   
+  The figure below shows how we structure the incoming streaming data:
+
+     '''
+        
+        from pyspark.sql.types import StructType, StructField, StringType, IntegerType, TimestampType,DateType
+        
+        
+        user_delta_table_path = "dbfs:/user/hive/warehouse/authentication_credentials"
+        app_region ='us-east-1'
+        data_streams_pin = "streaming-0e7ae8feb921-pin"
+        data_streams_geo = "streaming-0e7ae8feb921-geo"
+        data_streams_user = "streaming-0e7ae8feb921-user"
+        data_format = 'JSON'
+        
+        
+        struct_stream_pin = StructType([StructField("index", StringType(), True), 
+                            StructField("unique_id", StringType(), True),
+                            StructField("title", StringType(), True),
+                            StructField("description", StringType(), True),
+                            StructField("poster_name", StringType(), True),
+                            StructField("save_location", StringType(), True),
+                            StructField("tag_list", StringType(), True),
+                            StructField("is_image_or_video", StringType(), True),
+                            StructField("image_src", StringType(), True),
+                            StructField("downloaded", StringType(), True),
+                            StructField("follower_count", StringType(), True),
+                            StructField("category", StringType(), True)
+                            ])
+        
+
+        struct_stream_user = StructType([StructField("ind", StringType(), True),
+                                          StructField("first_name", StringType(), True),
+                                          StructField("last_name", StringType(), True),
+                                          StructField("age", StringType(), True),
+                                          StructField("date_joined", DateType(), True)
+                                          ])
+        
+        
+        struct_stream_geo = StructType([StructField("country", StringType(), True),
+                                        StructField("ind", StringType(), True),
+                                        StructField("latitude", DoubleType(), True),
+                                        StructField("longitude", DoubleType(), True),
+                                        StructField("timestamp", TimestampType(), True)
+                                        ])
+        
+        streaming_data_pin_df= read_streaming_data(user_delta_table_path,data_streams_pin,app_region,'earliest')
+        streaming_data_geo_df = read_streaming_data(user_delta_table_path,data_streams_geo,app_region,'earliest')
+        streaming_data_user_df = read_streaming_data(user_delta_table_path,data_streams_user,app_region,'earliest')
+
+        #applying schema
+
+
+
+     '''
+
+   Below illustrate how we apply the data structure,cleaning and storage on the incoming stream
+
+     '''
+        # TASK 1 Replacing empty with none
+        
+        
+        import pyspark.sql.functions as F
+        from pyspark.sql.functions import *
+        from pyspark.sql.functions import when,col, substring
+        
+        
+        
+        streaming_data_pin_df_schema = streaming_data_pin_df.selectExpr("CAST(data as STRING)as message") \
+            .select(from_json(col("message"), struct_stream_pin).alias("json")) \
+                .select("json.*")
+        
+        streaming_data_pin_df_schema = streaming_data_pin_df_schema.select([when(col(c)=="",None).otherwise(col(c)).alias(c) for c in streaming_data_pin_df_schema.columns])
+        streaming_data_pin_df_schema = streaming_data_pin_df_schema.replace({'Bored Panda': None}, subset=['poster_name'])
+        streaming_data_pin_df_schema = streaming_data_pin_df_schema.replace({'User Info Error': None}, subset=['poster_name'])
+        streaming_data_pin_df_schema = streaming_data_pin_df_schema.withColumn('poster_name', regexp_replace('poster_name', '[^a-zA-Z0-9]', " "))
+        
+        # CLEANING FOLLOWERS COUNT COLUMN
+        streaming_data_pin_df_schema = streaming_data_pin_df_schema.withColumn("follower_count", F.when(F.col('follower_count').rlike("(k$)"), F.regexp_replace(F.col('follower_count'),r'(k$)','000')).otherwise(F.col('follower_count')))
+        
+        #CASTING FOLLOWER_COUNT TO INT
+        
+        streaming_data_pin_df_schema = streaming_data_pin_df_schema.withColumn("follower_count", streaming_data_pin_df_schema["follower_count"].cast("int"))
+        
+        streaming_data_pin_df_schema = streaming_data_pin_df_schema.withColumn("index", streaming_data_pin_df_schema["index"].cast("int"))
+        streaming_data_pin_df_schema = streaming_data_pin_df_schema.withColumnRenamed("index", "ind")
+
+
+        streaming_data_pin_df_schema = streaming_data_pin_df_schema.withColumn("downloaded", streaming_data_pin_df_schema["downloaded"].cast("int"))
+        
+        streaming_data_pin_df_schema.select('follower_count').printSchema()
+        
+        #CLEANING SAVED_LOCATION COLUMN
+        streaming_data_pin_df_schema = streaming_data_pin_df_schema.withColumn("save_location",expr('substring(save_location, 15,length(save_location))'))
+        
+        #RENAMING INDEX COLUMN AND REORDERING
+        
+        df_sequence =[
+            "ind",
+            "unique_id",
+            "title",
+            "description",
+            "follower_count",
+            "poster_name",
+            "tag_list",
+            "is_image_or_video",
+            "image_src",
+            "save_location",
+            "category"
+        ]
+        
+        streaming_data_pin_df_schema = streaming_data_pin_df_schema.select(df_sequence + [col for col in streaming_data_pin_df_schema.columns if col not in df_sequence])
+
+        query = (
+          streaming_data_pin_df_schema
+            .writeStream
+            .format("delta")          
+            .queryName("cleaned_pin_table") 
+            .outputMode("append")   
+            .option("checkpointLocation", "tmp/checkpoints")  
+            .table("0e7ae8feb921_pin_table")  
+        )
+        
+        display(streaming_data_pin_df_schema)
+        
+
+     '''
+
+Below is the output of the query after running the above script; it shows the cleaned stream while reading it from Kinesis data streams and the created delta table where the data is being stored after the cleaning process
+
+'''
+      ![image](https://github.com/user-attachments/assets/bf168ff8-a07c-4122-94a8-5739fadd90a1)
+
+ '''
+
+
 
 
 
