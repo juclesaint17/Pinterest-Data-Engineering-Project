@@ -12,8 +12,6 @@ from multiprocessing import Process
 
 
 
-
-
 random.seed(100)
 
 
@@ -128,7 +126,6 @@ class AWSDBConnector:
                 data_selected_row = connection.execute(data_string)
                     
                 for row in data_selected_row:
-
                     data_name = dict(row._mapping)
                     json_data = json.dumps({
                         "records":[
